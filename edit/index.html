@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PhotoEdit Pro - PSD Editor</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- ag-psd -->
+    <script src="https://unpkg.com/ag-psd/dist/bundle.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --secondary: #8B5CF6;
+            --accent: #EC4899;
+            --bg-dark: #FFFFFF;
+            --bg-darker: #F8F9FC;
+            --bg-light: #F1F5F9;
+            --bg-panel: #E2E8F0;
+            --text-light: #0F172A;
+            --text-gray: #64748B;
+            --border: #E2E8F0;
+            --shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-darker);
+            color: var(--text-light);
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1000;
+            height: 60px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-light);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .header-center {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .file-name {
+            color: var(--text-gray);
+            font-size: 0.875rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.875rem;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-light);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-light);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            width: 100%;
+            position: relative;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            width: 72px;
+            background: var(--bg-dark);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 0;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .tool-btn {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 0.5rem;
+            border: none;
+            background: transparent;
+            color: var(--text-gray);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            position: relative;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .tool-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tool-label {
+            font-size: 0.625rem;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: var(--bg-dark);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-darker);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-gray);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .sidebar-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .sidebar-content {
+            padding: 1.5rem;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-gray);
+            margin-bottom: 1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+
+        .filter-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            background: var(--bg-light);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .filter-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .filter-item.active {
+            border-color: var(--primary);
+        }
+
+        .filter-preview {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        /* Simulating filters for preview */
+        .filter-item[data-filter="grayscale"] .filter-preview {
+            filter: grayscale(100%);
+        }
+
+        .filter-item[data-filter="sepia"] .filter-preview {
+            filter: sepia(100%);
+        }
+
+        .filter-item[data-filter="bright"] .filter-preview {
+            filter: brightness(1.3);
+        }
+
+        .filter-item[data-filter="contrast"] .filter-preview {
+            filter: contrast(1.5);
+        }
+
+        .filter-item[data-filter="saturate"] .filter-preview {
+            filter: saturate(2);
+        }
+
+        .filter-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem;
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        .slider-control {
+            margin-bottom: 1.5rem;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider-label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .slider-value {
+            font-size: 0.875rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-light);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-darker);
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .canvas-toolbar {
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover {
+            background: var(--bg-panel);
+        }
+
+        .zoom-display {
+            color: var(--text-gray);
+            font-size: 0.875rem;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .canvas-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+            overflow: auto;
+        }
+
+        /* Replaced image container with fabric wrapper styling */
+        .canvas-wrapper {
+            box-shadow: var(--shadow-lg);
+            border-radius: 2px;
+            /* Canvas usually sharp edges */
+            overflow: hidden;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2N89uzZfwY8QFJSEp80A+OoAcMhASE+ODghA9D9X10Okt3FcCAJjUY4AQA7RRn5YlmCLgAAAABJRU5ErkJggg==');
+            /* Checkerboard pattern for transparency */
+        }
+
+        .upload-area {
+            width: 600px;
+            max-width: 90%;
+            padding: 4rem 2rem;
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.03);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--text-gray);
+        }
+
+        .upload-text {
+            font-size: 1.125rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            font-size: 0.875rem;
+            color: var(--text-gray);
+        }
+
+        /* Properties Panel */
+        .properties-panel {
+            width: 280px;
+            background: var(--bg-dark);
+            border-left: 1px solid var(--border);
+            padding: 1.5rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+        }
+
+        .panel-section {
+            margin-bottom: 2rem;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .info-label {
+            color: var(--text-gray);
+        }
+
+        .info-value {
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            padding: 0.75rem;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-panel);
+            border-color: var(--primary);
+        }
+
+        /* Effects */
+        .effect-item {
+            padding: 1rem;
+            background: var(--bg-light);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .effect-item:hover {
+            border-color: var(--primary);
+            background: var(--bg-panel);
+        }
+
+        .effect-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .effect-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .effect-icon {
+            font-size: 1.25rem;
+        }
+
+        /* Mobile Toggle */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Overlay */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 899;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .history-item {
+            padding: 0.75rem;
+            background: var(--bg-light);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .history-item .layer-name {
+            font-weight: 500;
+        }
+
+        .history-item .layer-type {
+            font-size: 0.7rem;
+            color: var(--text-gray);
+            background: #e2e8f0;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .history-item:hover {
+            background: var(--bg-panel);
+        }
+
+        .history-item.active-layer {
+            border: 1px solid var(--primary);
+            background: #EEF2FF;
+        }
+
+        /* Responsive Styles (preserved mostly) */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 260px;
+            }
+
+            .properties-panel {
+                width: 240px;
+            }
+        }
+
+        @media (max-width: 968px) {
+            .toolbar {
+                width: 60px;
+                padding: 0.75rem 0;
+            }
+
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 60px;
+                height: calc(100vh - 60px);
+                z-index: 900;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                width: 320px;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .properties-panel {
+                position: fixed;
+                right: 0;
+                top: 60px;
+                height: calc(100vh - 60px);
+                z-index: 900;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                width: 300px;
+            }
+
+            .properties-panel.active {
+                transform: translateX(0);
+            }
+
+            .mobile-toggle {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .toolbar {
+                width: 100%;
+                height: 60px;
+                flex-direction: row;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">📸</div>
+            <span class="logo-text">PhotoEdit Pro</span>
+        </div>
+        <div class="header-center">
+            <span class="file-name" id="fileNameDisplay">Untitled</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="exportImage('png')">Download PNG</button>
+            <button class="btn btn-primary" onclick="exportImage('jpg')">Save JPG</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Overlay for mobile -->
+        <div class="overlay" id="overlay" onclick="closePanels()"></div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <button class="tool-btn active" onclick="setTool('select')" id="btn-select" title="Select (V)">
+                <span>↖</span>
+                <span class="tool-label">Select</span>
+            </button>
+            <button class="tool-btn" onclick="setTool('draw')" id="btn-draw" title="Draw (B)">
+                <span>🖌</span>
+                <span class="tool-label">Draw</span>
+            </button>
+            <button class="tool-btn" onclick="addText()" title="Text (T)">
+                <span>T</span>
+                <span class="tool-label">Text</span>
+            </button>
+            <button class="tool-btn" onclick="addShape('rect')" title="Rectangle (R)">
+                <span>◼</span>
+                <span class="tool-label">Rect</span>
+            </button>
+            <button class="tool-btn" onclick="addShape('circle')" title="Circle (C)">
+                <span>●</span>
+                <span class="tool-label">Circle</span>
+            </button>
+            <button class="tool-btn" onclick="deleteActiveObject()" title="Delete (Del)">
+                <span>⌫</span>
+                <span class="tool-label">Delete</span>
+            </button>
+        </div>
+
+        <!-- Sidebar (Filters/Adjust) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" onclick="switchTab('filters')">Filters</button>
+                <button class="sidebar-tab" onclick="switchTab('adjust')">Adjust</button>
+            </div>
+
+            <div class="sidebar-content" id="filtersTab">
+                <div class="section">
+                    <h3 class="section-title">Quick Filters</h3>
+                    <div class="filter-grid">
+                        <div class="filter-item active" onclick="applyFilter('none')" data-filter="none">
+                            <div class="filter-preview">Original</div>
+                            <div class="filter-name">Original</div>
+                        </div>
+                        <div class="filter-item" onclick="applyFilter('grayscale')" data-filter="grayscale">
+                            <div class="filter-preview">B&W</div>
+                            <div class="filter-name">B&W</div>
+                        </div>
+                        <div class="filter-item" onclick="applyFilter('sepia')" data-filter="sepia">
+                            <div class="filter-preview">Sepia</div>
+                            <div class="filter-name">Sepia</div>
+                        </div>
+                        <div class="filter-item" onclick="applyFilter('vintage')" data-filter="vintage">
+                            <div class="filter-preview" style="filter: sepia(0.5) contrast(1.2);">Vintage</div>
+                            <div class="filter-name">Vintage</div>
+                        </div>
+                        <div class="filter-item" onclick="applyFilter('invert')" data-filter="invert">
+                            <div class="filter-preview" style="filter: invert(1);">Invert</div>
+                            <div class="filter-name">Invert</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-content" id="adjustTab" style="display: none;">
+                <div class="section">
+                    <h3 class="section-title">Layer Adjustments</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-gray); margin-bottom: 1rem;">Select an image layer to
+                        adjust.</p>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Brightness</span>
+                            <span class="slider-value" id="brightnessValue">0</span>
+                        </div>
+                        <input type="range" class="slider" id="brightness" min="-100" max="100" value="0"
+                            oninput="updateAdjustment('brightness', this.value)">
+                    </div>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Contrast</span>
+                            <span class="slider-value" id="contrastValue">0</span>
+                        </div>
+                        <input type="range" class="slider" id="contrast" min="-100" max="100" value="0"
+                            oninput="updateAdjustment('contrast', this.value)">
+                    </div>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Saturation</span>
+                            <span class="slider-value" id="saturationValue">0</span>
+                        </div>
+                        <input type="range" class="slider" id="saturation" min="-100" max="100" value="0"
+                            oninput="updateAdjustment('saturation', this.value)">
+                    </div>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Blur</span>
+                            <span class="slider-value" id="blurValue">0</span>
+                        </div>
+                        <input type="range" class="slider" id="blur" min="0" max="100" value="0" step="5"
+                            oninput="updateAdjustment('blur', this.value)">
+                    </div>
+
+                    <button class="action-btn" style="width: 100%; margin-top: 1rem;" onclick="resetAdjustments()">Reset
+                        Adjustments</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Canvas Area -->
+        <main class="canvas-area">
+            <div class="canvas-toolbar">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="setZoom(0.9)">−</button>
+                    <span class="zoom-display" id="zoomLevel">100%</span>
+                    <button class="zoom-btn" onclick="setZoom(1.1)">+</button>
+                    <button class="btn btn-secondary" style="margin-left: 0.5rem;" onclick="centerCanvas()">Fit</button>
+                </div>
+                <div>
+                    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">Upload
+                        File</button>
+                    <input type="file" id="fileInput" accept=".psd,.jpg,.jpeg,.png,.webp" style="display: none;"
+                        onchange="handleFileUpload(event)">
+                </div>
+            </div>
+
+            <div class="canvas-content" id="mainCanvasContainer">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drop PSD or Image here</div>
+                    <div class="upload-hint">Supports: PSD, JPG, PNG, WEBP</div>
+                </div>
+                <div class="canvas-wrapper" id="canvasWrapper" style="display: none;">
+                    <canvas id="canvas"></canvas>
+                </div>
+            </div>
+        </main>
+
+        <!-- Properties Panel -->
+        <aside class="properties-panel" id="propertiesPanel">
+            <div class="panel-section">
+                <h3 class="panel-title">Layer Properties</h3>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value" id="prop-type">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Opacity</span>
+                    <span class="info-value" id="prop-opacity">-</span>
+                </div>
+                <div class="slider-control" style="margin-top: 0.5rem;">
+                    <input type="range" class="slider" id="opacitySlider" min="0" max="100" value="100"
+                        oninput="updateOpacity(this.value)">
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="panel-title">Layers</h3>
+                <div id="layersList" style="max-height: 200px; overflow-y: auto;">
+                    <div class="history-item">No Layers</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="panel-title">Quick Actions</h3>
+                <div class="action-grid">
+                    <button class="action-btn" onclick="bringToFront()">Bring Front</button>
+                    <button class="action-btn" onclick="sendToBack()">Send Back</button>
+                    <button class="action-btn" onclick="cloneObject()">Clone</button>
+                    <button class="action-btn" onclick="deleteActiveObject()">Delete</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Mobile Toggle -->
+    <button class="mobile-toggle" onclick="togglePanels()">⚙</button>
+
+    <script>
+        let canvas;
+        let activeObject = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = new fabric.Canvas('canvas', {
+                width: 800,
+                height: 600,
+                backgroundColor: '#ffffff',
+                preserveObjectStacking: true,
+                selection: true
+            });
+
+            // Event Listeners for Fabric
+            canvas.on('selection:created', handleSelection);
+            canvas.on('selection:updated', handleSelection);
+            canvas.on('selection:cleared', handleSelectionCleared);
+            canvas.on('object:modified', updateLayerList);
+            canvas.on('object:added', updateLayerList);
+            canvas.on('object:removed', updateLayerList);
+
+            // Drag and Drop
+            const uploadBox = document.getElementById('uploadArea');
+            uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.style.borderColor = 'var(--primary)'; });
+            uploadBox.addEventListener('dragleave', e => { e.preventDefault(); uploadBox.style.borderColor = 'var(--border)'; });
+            uploadBox.addEventListener('drop', e => {
+                e.preventDefault();
+                uploadBox.style.borderColor = 'var(--border)';
+                const file = e.dataTransfer.files[0];
+                if (file) processFile(file);
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete') deleteActiveObject();
+            });
+        });
+
+        /* -------------------------------------------------------------
+           FILE HANDLING
+        ------------------------------------------------------------- */
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        }
+
+        function processFile(file) {
+            const fileName = file.name;
+            document.getElementById('fileNameDisplay').innerText = fileName;
+
+            // UI Switch
+            document.getElementById('uploadArea').style.display = 'none';
+            document.getElementById('canvasWrapper').style.display = 'block';
+
+            if (fileName.toLowerCase().endsWith('.psd')) {
+                loadPsd(file);
+            } else {
+                loadImage(file);
+            }
+        }
+
+        // PSD Loader
+        function loadPsd(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const buffer = e.target.result;
+                try {
+                    const psd = agPsd.readPsd(buffer);
+
+                    // Resize canvas to PSD size
+                    canvas.setWidth(psd.width);
+                    canvas.setHeight(psd.height);
+                    canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+                    canvas.clear();
+
+                    // Recursive function to add layers
+                    // Note: Simplification - we flatten groups for basic fabric editing or handle basic children
+                    const addLayers = (children, leftOff = 0, topOff = 0) => {
+                        // Reverse because PSD bottom layer is first in array usually, but Fabric renders bottom-up? 
+                        // Actually ag-psd returns children: [top, ..., bottom], need to insert backwards or reverse.
+                        // We'll iterate reverse to add to canvas so bottom is added first.
+                        [...children].reverse().forEach(layer => {
+                            if (layer.children) {
+                                addLayers(layer.children, leftOff + (layer.left || 0), topOff + (layer.top || 0));
+                            } else if (layer.canvas) {
+                                const imgInstance = new fabric.Image(layer.canvas, {
+                                    left: leftOff + layer.left,
+                                    top: topOff + layer.top,
+                                    opacity: layer.opacity != null ? layer.opacity : 1,
+                                    name: layer.name
+                                });
+                                canvas.add(imgInstance);
+                            }
+                        });
+                    };
+
+                    if (psd.children) addLayers(psd.children);
+
+                    canvas.renderAll();
+                    updateLayerList();
+                    centerCanvas();
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Error loading PSD: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Image Loader
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                fabric.Image.fromURL(e.target.result, function (img) {
+                    // Set canvas size to first image size if empty
+                    if (canvas.getObjects().length === 0) {
+                        canvas.setWidth(img.width);
+                        canvas.setHeight(img.height);
+                    }
+                    img.set({ name: file.name });
+                    canvas.add(img);
+                    canvas.setActiveObject(img);
+                    centerCanvas();
+                    updateLayerList();
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /* -------------------------------------------------------------
+           TOOLS
+        ------------------------------------------------------------- */
+        function setTool(toolName) {
+            canvas.isDrawingMode = false;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+
+            if (toolName === 'draw') {
+                canvas.isDrawingMode = true;
+                canvas.freeDrawingBrush.width = 10;
+                canvas.freeDrawingBrush.color = "#000000";
+                document.getElementById('btn-draw').classList.add('active');
+            } else {
+                document.getElementById('btn-select').classList.add('active');
+            }
+        }
+
+        function addText() {
+            const text = new fabric.IText('Hello', {
+                left: canvas.width / 2 - 50,
+                top: canvas.height / 2 - 20,
+                fontFamily: 'Inter',
+                fill: '#333',
+                name: 'Text Layer'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            setTool('select');
+        }
+
+        function addShape(type) {
+            let shape;
+            const center = { left: canvas.width / 2, top: canvas.height / 2 };
+
+            if (type === 'rect') {
+                shape = new fabric.Rect({
+                    ...center, width: 100, height: 100, fill: '#6366F1', name: 'Rectangle'
+                });
+            } else if (type === 'circle') {
+                shape = new fabric.Circle({
+                    ...center, radius: 50, fill: '#EC4899', name: 'Circle'
+                });
+            }
+
+            if (shape) {
+                canvas.add(shape);
+                canvas.setActiveObject(shape);
+                setTool('select');
+            }
+        }
+
+        function deleteActiveObject() {
+            const active = canvas.getActiveObjects();
+            if (active.length) {
+                canvas.discardActiveObject();
+                active.forEach(obj => canvas.remove(obj));
+            }
+        }
+
+        /* -------------------------------------------------------------
+           ADJUSTMENTS & FILTERS
+        ------------------------------------------------------------- */
+        // We use a helper to get the filter index for specific types
+        const FILTERS = {
+            'brightness': new fabric.Image.filters.Brightness(),
+            'contrast': new fabric.Image.filters.Contrast(),
+            'saturation': new fabric.Image.filters.Saturation(),
+            'blur': new fabric.Image.filters.Blur(),
+            'grayscale': new fabric.Image.filters.Grayscale(),
+            'sepia': new fabric.Image.filters.Sepia(),
+            'invert': new fabric.Image.filters.Invert()
+        };
+
+        function updateAdjustment(type, value) {
+            const obj = canvas.getActiveObject();
+            if (!obj || !obj.isType('image')) return;
+
+            // Mapping slider values to Fabric filter values
+            let filterVal = parseFloat(value);
+
+            // Normalize values based on Fabric's expected ranges
+            // Brightness: -1 to 1 (Input -100 to 100 -> divide by 100)
+            // Contrast: -1 to 1 
+            // Saturation: -1 to 1
+            // Blur: 0 to 1 (Input 0 to 100 -> divide by 100)
+
+            if (type === 'brightness' || type === 'contrast' || type === 'saturation') {
+                filterVal = filterVal / 100;
+            } else if (type === 'blur') {
+                filterVal = filterVal / 100;
+            }
+
+            // Find or add filter
+            // This is a naive implementation that replaces/adds specific filter types
+            // In a pro app, you'd manage the filter array more robustly.
+
+            let filterInstance;
+
+            // Helper to find index of filter instance in obj.filters
+            const findFilterIndex = (clazz) => obj.filters.findIndex(f => f instanceof clazz);
+
+            if (type === 'brightness') {
+                const idx = findFilterIndex(fabric.Image.filters.Brightness);
+                if (idx > -1) { obj.filters[idx].brightness = filterVal; }
+                else {
+                    const f = new fabric.Image.filters.Brightness({ brightness: filterVal });
+                    obj.filters.push(f);
+                }
+            }
+            else if (type === 'contrast') {
+                const idx = findFilterIndex(fabric.Image.filters.Contrast);
+                if (idx > -1) { obj.filters[idx].contrast = filterVal; }
+                else {
+                    const f = new fabric.Image.filters.Contrast({ contrast: filterVal });
+                    obj.filters.push(f);
+                }
+            }
+            else if (type === 'saturation') {
+                const idx = findFilterIndex(fabric.Image.filters.Saturation);
+                if (idx > -1) { obj.filters[idx].saturation = filterVal; }
+                else {
+                    const f = new fabric.Image.filters.Saturation({ saturation: filterVal });
+                    obj.filters.push(f);
+                }
+            }
+            else if (type === 'blur') {
+                const idx = findFilterIndex(fabric.Image.filters.Blur);
+                if (idx > -1) { obj.filters[idx].blur = filterVal; }
+                else {
+                    const f = new fabric.Image.filters.Blur({ blur: filterVal });
+                    obj.filters.push(f);
+                }
+            }
+
+            obj.applyFilters();
+            canvas.requestRenderAll();
+
+            // Update Text
+            document.getElementById(type + 'Value').innerText = value;
+        }
+
+        function applyFilter(name) {
+            const obj = canvas.getActiveObject();
+            if (!obj || !obj.isType('image')) {
+                alert("Please select an image layer first.");
+                return;
+            }
+
+            // Remove existing color filters (keeping adjustments like brightness?)
+            // For simplicity, let's just clear specific effect filters
+            const effects = [fabric.Image.filters.Grayscale, fabric.Image.filters.Sepia, fabric.Image.filters.Invert];
+            obj.filters = obj.filters.filter(f => !effects.some(e => f instanceof e));
+
+            if (name === 'grayscale') {
+                obj.filters.push(new fabric.Image.filters.Grayscale());
+            } else if (name === 'sepia') {
+                obj.filters.push(new fabric.Image.filters.Sepia());
+            } else if (name === 'vintage') {
+                obj.filters.push(new fabric.Image.filters.Sepia());
+                obj.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }));
+            } else if (name === 'invert') {
+                obj.filters.push(new fabric.Image.filters.Invert());
+            }
+
+            obj.applyFilters();
+            canvas.requestRenderAll();
+        }
+
+        function resetAdjustments() {
+            const obj = canvas.getActiveObject();
+            if (!obj || !obj.isType('image')) return;
+
+            obj.filters = [];
+            obj.applyFilters();
+            canvas.requestRenderAll();
+
+            ['brightness', 'contrast', 'saturation', 'blur'].forEach(id => {
+                document.getElementById(id).value = 0;
+                document.getElementById(id + 'Value').innerText = 0;
+            });
+        }
+
+        /* -------------------------------------------------------------
+           UI & HELPERS
+        ------------------------------------------------------------- */
+        function handleSelection(e) {
+            const obj = e.selected ? e.selected[0] : canvas.getActiveObject();
+            if (!obj) return;
+
+            activeObject = obj;
+            document.getElementById('prop-type').innerText = obj.type;
+            document.getElementById('prop-opacity').innerText = Math.round(obj.opacity * 100) + '%';
+            document.getElementById('opacitySlider').value = obj.opacity * 100;
+
+            highlightLayer(obj);
+        }
+
+        function handleSelectionCleared() {
+            activeObject = null;
+            document.getElementById('prop-type').innerText = '-';
+            document.getElementById('prop-opacity').innerText = '-';
+        }
+
+        function updateOpacity(val) {
+            const obj = canvas.getActiveObject();
+            if (obj) {
+                obj.set('opacity', val / 100);
+                document.getElementById('prop-opacity').innerText = val + '%';
+                canvas.renderAll();
+            }
+        }
+
+        function centerCanvas() {
+            // Simple zoom to fit logic
+            // In a real app we'd calculate container size vs canvas size
+            canvas.setZoom(1);
+            const containerInfo = document.querySelector('.canvas-content').getBoundingClientRect();
+            // ... implementation skipped for brevity, just reset zoom
+            setZoom(1);
+        }
+
+        function setZoom(scale) {
+            if (scale === 1) canvas.setZoom(1);
+            else canvas.setZoom(canvas.getZoom() * scale);
+
+            document.getElementById('zoomLevel').innerText = Math.round(canvas.getZoom() * 100) + '%';
+        }
+
+        function updateLayerList() {
+            const list = document.getElementById('layersList');
+            list.innerHTML = '';
+
+            // Fabric objects are drawn bottom to top (0 is bottom).
+            // We want list to show Top first.
+            const objects = canvas.getObjects().slice().reverse();
+
+            if (objects.length === 0) {
+                list.innerHTML = '<div class="history-item">No Layers</div>';
+                return;
+            }
+
+            objects.forEach((obj, index) => {
+                const el = document.createElement('div');
+                el.className = 'history-item';
+                // Note: objects array is reversed, so actual index in canvas is length - 1 - index
+                const canvasIndex = objects.length - 1 - index;
+
+                if (canvas.getActiveObject() === obj) el.classList.add('active-layer');
+
+                el.innerHTML = `
+                    <span class="layer-name">${obj.name || 'Layer ' + canvasIndex}</span>
+                    <span class="layer-type">${obj.type}</span>
+                `;
+                el.onclick = () => {
+                    canvas.setActiveObject(obj);
+                    canvas.renderAll();
+                };
+                list.appendChild(el);
+            });
+        }
+
+        function highlightLayer(obj) {
+            // Visual update of layer list
+            const items = document.querySelectorAll('.history-item');
+            items.forEach(i => i.classList.remove('active-layer'));
+            updateLayerList(); // Simply re-render is easiest
+        }
+
+        function bringToFront() {
+            const obj = canvas.getActiveObject();
+            if (obj) { canvas.bringToFront(obj); updateLayerList(); }
+        }
+
+        function sendToBack() {
+            const obj = canvas.getActiveObject();
+            if (obj) { canvas.sendToBack(obj); updateLayerList(); }
+        }
+
+        function cloneObject() {
+            const obj = canvas.getActiveObject();
+            if (!obj) return;
+            obj.clone(function (cloned) {
+                canvas.discardActiveObject();
+                cloned.set({
+                    left: cloned.left + 10,
+                    top: cloned.top + 10,
+                    evented: true
+                });
+                if (cloned.type === 'activeSelection') {
+                    // active selection needs a reference to the canvas.
+                    cloned.canvas = canvas;
+                    cloned.forEachObject(function (obj) {
+                        canvas.add(obj);
+                    });
+                    cloned.setCoords();
+                } else {
+                    canvas.add(cloned);
+                }
+                canvas.setActiveObject(cloned);
+                canvas.requestRenderAll();
+            });
+        }
+
+        function exportImage(format) {
+            if (canvas.getObjects().length === 0) return;
+            const dataURL = canvas.toDataURL({
+                format: format,
+                quality: 0.8
+            });
+            const link = document.createElement('a');
+            link.download = `exported-image.${format}`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            document.getElementById('filtersTab').style.display = 'none';
+            document.getElementById('adjustTab').style.display = 'none';
+
+            document.getElementById(tab + 'Tab').style.display = 'block';
+        }
+
+        function togglePanels() {
+            const sidebar = document.getElementById('sidebar');
+            const properties = document.getElementById('propertiesPanel');
+            const overlay = document.getElementById('overlay');
+
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                properties.classList.add('active');
+            } else if (properties.classList.contains('active')) {
+                properties.classList.remove('active');
+                overlay.classList.remove('active');
+            } else {
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+            }
+        }
+
+        function closePanels() {
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('propertiesPanel').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+        }
+    </script>
+</body>
+
+</html>
