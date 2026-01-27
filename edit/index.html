@@ -618,7 +618,6 @@
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
-            justify-content: space-between;
         }
 
         .history-item .layer-name {
@@ -642,7 +641,31 @@
             background: #EEF2FF;
         }
 
-        /* Responsive Styles (preserved mostly) */
+        .layer-thumb {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            background: #eee;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-shrink: 0;
+            margin-right: 0.75rem;
+            background-color: white;
+        }
+
+        .layer-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .history-item .layer-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         @media (max-width: 1200px) {
             .sidebar {
                 width: 260px;
@@ -745,101 +768,181 @@
                 <span>T</span>
                 <span class="tool-label">Text</span>
             </button>
-            <button class="tool-btn" onclick="addShape('rect')" title="Rectangle (R)">
-                <span>◼</span>
-                <span class="tool-label">Rect</span>
-            </button>
-            <button class="tool-btn" onclick="addShape('circle')" title="Circle (C)">
-                <span>●</span>
-                <span class="tool-label">Circle</span>
-            </button>
-            <button class="tool-btn" onclick="deleteActiveObject()" title="Delete (Del)">
-                <span>⌫</span>
-                <span class="tool-label">Delete</span>
-            </button>
         </div>
 
-        <!-- Sidebar (Filters/Adjust) -->
+        <!-- Sidebar (Context Aware) -->
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-tabs">
-                <button class="sidebar-tab active" onclick="switchTab('filters')">Filters</button>
-                <button class="sidebar-tab" onclick="switchTab('adjust')">Adjust</button>
+
+            <!-- Default View (No Selection) -->
+            <div id="view-default" class="sidebar-content">
+                <div class="section" style="text-align: center; color: var(--text-gray); margin-top: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">👆</div>
+                    <p>Select an object on the canvas to see editing options.</p>
+                </div>
             </div>
 
-            <div class="sidebar-content" id="filtersTab">
-                <div class="section">
-                    <h3 class="section-title">Quick Filters</h3>
-                    <div class="filter-grid">
-                        <div class="filter-item active" onclick="applyFilter('none')" data-filter="none">
-                            <div class="filter-preview">Original</div>
-                            <div class="filter-name">Original</div>
+            <!-- Image View -->
+            <div id="view-image" style="display: none;">
+                <div class="section" style="padding-bottom: 0;">
+                    <button class="action-btn" style="width: 100%; margin-bottom: 0.5rem;"
+                        onclick="document.getElementById('replaceInput').click()">🔄 Replace Image</button>
+                    <input type="file" id="replaceInput" accept="image/*" style="display: none;"
+                        onchange="replaceImage(event)">
+                </div>
+
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" onclick="switchTab('filters')">Filters</button>
+                    <button class="sidebar-tab" onclick="switchTab('adjust')">Adjust</button>
+                </div>
+
+                <div class="sidebar-content" id="filtersTab">
+                    <div class="section">
+                        <h3 class="section-title">Quick Filters</h3>
+                        <div class="filter-grid">
+                            <div class="filter-item active" onclick="applyFilter('none')" data-filter="none">
+                                <div class="filter-preview">Original</div>
+                                <div class="filter-name">Original</div>
+                            </div>
+                            <div class="filter-item" onclick="applyFilter('grayscale')" data-filter="grayscale">
+                                <div class="filter-preview">B&W</div>
+                                <div class="filter-name">B&W</div>
+                            </div>
+                            <div class="filter-item" onclick="applyFilter('sepia')" data-filter="sepia">
+                                <div class="filter-preview">Sepia</div>
+                                <div class="filter-name">Sepia</div>
+                            </div>
+                            <div class="filter-item" onclick="applyFilter('vintage')" data-filter="vintage">
+                                <div class="filter-preview" style="filter: sepia(0.5) contrast(1.2);">Vintage</div>
+                                <div class="filter-name">Vintage</div>
+                            </div>
+                            <div class="filter-item" onclick="applyFilter('invert')" data-filter="invert">
+                                <div class="filter-preview" style="filter: invert(1);">Invert</div>
+                                <div class="filter-name">Invert</div>
+                            </div>
                         </div>
-                        <div class="filter-item" onclick="applyFilter('grayscale')" data-filter="grayscale">
-                            <div class="filter-preview">B&W</div>
-                            <div class="filter-name">B&W</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-content" id="adjustTab" style="display: none;">
+                    <div class="section">
+                        <h3 class="section-title">Image Adjustments</h3>
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Brightness</span>
+                                <span class="slider-value" id="brightnessValue">0</span>
+                            </div>
+                            <input type="range" class="slider" id="brightness" min="-100" max="100" value="0"
+                                oninput="updateAdjustment('brightness', this.value)">
                         </div>
-                        <div class="filter-item" onclick="applyFilter('sepia')" data-filter="sepia">
-                            <div class="filter-preview">Sepia</div>
-                            <div class="filter-name">Sepia</div>
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Contrast</span>
+                                <span class="slider-value" id="contrastValue">0</span>
+                            </div>
+                            <input type="range" class="slider" id="contrast" min="-100" max="100" value="0"
+                                oninput="updateAdjustment('contrast', this.value)">
                         </div>
-                        <div class="filter-item" onclick="applyFilter('vintage')" data-filter="vintage">
-                            <div class="filter-preview" style="filter: sepia(0.5) contrast(1.2);">Vintage</div>
-                            <div class="filter-name">Vintage</div>
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Saturation</span>
+                                <span class="slider-value" id="saturationValue">0</span>
+                            </div>
+                            <input type="range" class="slider" id="saturation" min="-100" max="100" value="0"
+                                oninput="updateAdjustment('saturation', this.value)">
                         </div>
-                        <div class="filter-item" onclick="applyFilter('invert')" data-filter="invert">
-                            <div class="filter-preview" style="filter: invert(1);">Invert</div>
-                            <div class="filter-name">Invert</div>
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Blur</span>
+                                <span class="slider-value" id="blurValue">0</span>
+                            </div>
+                            <input type="range" class="slider" id="blur" min="0" max="100" value="0" step="5"
+                                oninput="updateAdjustment('blur', this.value)">
+                        </div>
+                        <button class="action-btn" style="width: 100%; margin-top: 1rem;"
+                            onclick="resetAdjustments()">Reset Adjustments</button>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <!-- Text View -->
+            <div id="view-text" style="display: none;">
+                <div class="sidebar-content">
+                    <div class="section">
+                        <h3 class="section-title">Edit Text</h3>
+                        <div class="slider-control">
+                            <span class="slider-label">Replace Text</span>
+                            <textarea id="textInput" class="action-btn"
+                                style="width: 100%; text-align: left; background: white; cursor: text; margin-top: 0.5rem; resize: vertical;"
+                                rows="3" oninput="updateText(this.value)"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">Typography</h3>
+                        <div class="slider-control">
+                            <span class="slider-label">Font Family</span>
+                            <select id="fontFamilySelect" class="action-btn"
+                                style="width: 100%; text-align: left; margin-top: 0.5rem;"
+                                onchange="updateFontFamily(this.value)">
+                                <option value="Inter">Inter (Default)</option>
+                                <option value="Arial">Arial</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Impact">Impact</option>
+                            </select>
+                        </div>
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Size</span>
+                                <span class="slider-value" id="fontSizeVal">40</span>
+                            </div>
+                            <input type="range" class="slider" id="fontSizeSlider" min="10" max="200" value="40"
+                                oninput="updateFontSize(this.value)">
+                        </div>
+                        <div class="action-grid" style="margin-bottom: 1rem;">
+                            <button class="action-btn" onclick="toggleBold()"><b>B</b></button>
+                            <button class="action-btn" onclick="toggleItalic()"><i>I</i></button>
+                            <button class="action-btn" onclick="toggleUnderline()"><u>U</u></button>
+                            <button class="action-btn" onclick="toggleLinethrough()"><s>S</s></button>
+                        </div>
+                        <div class="slider-control">
+                            <span class="slider-label">Color</span>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 0.5rem;">
+                                <input type="color" id="textColorPicker"
+                                    style="height: 30px; width: 30px; border: none; padding: 0;"
+                                    onchange="updateTextColor(this.value)">
+                                <span style="font-size: 0.8rem; color: var(--text-gray);">Text Color</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">Style</h3>
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Stroke Width</span>
+                                <span class="slider-value" id="strokeWidthVal">0</span>
+                            </div>
+                            <input type="range" class="slider" id="strokeWidthSlider" min="0" max="10" value="0"
+                                step="0.5" oninput="updateStrokeWidth(this.value)">
+                        </div>
+                        <div class="slider-control">
+                            <span class="slider-label">Stroke Color</span>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 0.5rem;">
+                                <input type="color" id="strokeColorPicker"
+                                    style="height: 30px; width: 30px; border: none; padding: 0;"
+                                    onchange="updateStrokeColor(this.value)">
+                                <span style="font-size: 0.8rem; color: var(--text-gray);">Outline Color</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="sidebar-content" id="adjustTab" style="display: none;">
-                <div class="section">
-                    <h3 class="section-title">Layer Adjustments</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-gray); margin-bottom: 1rem;">Select an image layer to
-                        adjust.</p>
-
-                    <div class="slider-control">
-                        <div class="slider-header">
-                            <span class="slider-label">Brightness</span>
-                            <span class="slider-value" id="brightnessValue">0</span>
-                        </div>
-                        <input type="range" class="slider" id="brightness" min="-100" max="100" value="0"
-                            oninput="updateAdjustment('brightness', this.value)">
-                    </div>
-
-                    <div class="slider-control">
-                        <div class="slider-header">
-                            <span class="slider-label">Contrast</span>
-                            <span class="slider-value" id="contrastValue">0</span>
-                        </div>
-                        <input type="range" class="slider" id="contrast" min="-100" max="100" value="0"
-                            oninput="updateAdjustment('contrast', this.value)">
-                    </div>
-
-                    <div class="slider-control">
-                        <div class="slider-header">
-                            <span class="slider-label">Saturation</span>
-                            <span class="slider-value" id="saturationValue">0</span>
-                        </div>
-                        <input type="range" class="slider" id="saturation" min="-100" max="100" value="0"
-                            oninput="updateAdjustment('saturation', this.value)">
-                    </div>
-
-                    <div class="slider-control">
-                        <div class="slider-header">
-                            <span class="slider-label">Blur</span>
-                            <span class="slider-value" id="blurValue">0</span>
-                        </div>
-                        <input type="range" class="slider" id="blur" min="0" max="100" value="0" step="5"
-                            oninput="updateAdjustment('blur', this.value)">
-                    </div>
-
-                    <button class="action-btn" style="width: 100%; margin-top: 1rem;" onclick="resetAdjustments()">Reset
-                        Adjustments</button>
-                </div>
-            </div>
         </aside>
 
         <!-- Canvas Area -->
@@ -889,6 +992,8 @@
                 </div>
             </div>
 
+
+
             <div class="panel-section">
                 <h3 class="panel-title">Layers</h3>
                 <div id="layersList" style="max-height: 200px; overflow-y: auto;">
@@ -914,6 +1019,8 @@
     <script>
         let canvas;
         let activeObject = null;
+        let baseWidth = 800; // Track original resolution
+        let baseHeight = 600;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -947,7 +1054,24 @@
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Delete') deleteActiveObject();
+
+                // Undo/Redo
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                    e.preventDefault();
+                    redo();
+                }
             });
+
+            // Init History
+            initHistory();
         });
 
         /* -------------------------------------------------------------
@@ -982,8 +1106,11 @@
                     const psd = agPsd.readPsd(buffer);
 
                     // Resize canvas to PSD size
-                    canvas.setWidth(psd.width);
-                    canvas.setHeight(psd.height);
+                    baseWidth = psd.width;
+                    baseHeight = psd.height;
+                    canvas.setWidth(baseWidth);
+                    canvas.setHeight(baseHeight);
+
                     canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
                     canvas.clear();
 
@@ -996,14 +1123,59 @@
                         [...children].reverse().forEach(layer => {
                             if (layer.children) {
                                 addLayers(layer.children, leftOff + (layer.left || 0), topOff + (layer.top || 0));
-                            } else if (layer.canvas) {
-                                const imgInstance = new fabric.Image(layer.canvas, {
-                                    left: leftOff + layer.left,
-                                    top: topOff + layer.top,
-                                    opacity: layer.opacity != null ? layer.opacity : 1,
-                                    name: layer.name
-                                });
-                                canvas.add(imgInstance);
+                            } else {
+                                let fabricObj;
+
+                                // Handle Text Layers
+                                if (layer.text) {
+                                    const textData = layer.text;
+                                    // Extract basic styles
+                                    // ag-psd text data is complex, simplified extraction:
+                                    const content = textData.text || '';
+
+                                    // Try to get font size and color from first span or style
+                                    let fontSize = 20;
+                                    let fill = '#000000';
+                                    let fontFamily = 'Arial';
+
+                                    if (textData.style) {
+                                        if (textData.style.fontSize) fontSize = textData.style.fontSize;
+                                        if (textData.style.fillColor) {
+                                            const c = textData.style.fillColor;
+                                            fill = `rgb(${c.r}, ${c.g}, ${c.b})`;
+                                        }
+                                    }
+
+                                    // If detailed formatting exists (spans), use the first one for simplicity 
+                                    // covering the whole text object for now.
+                                    // (Full rich text support is complex in fabric)
+                                    // Note: ag-psd structures style runs differently? 
+                                    // Let's assume basic properties for now.
+
+                                    fabricObj = new fabric.IText(content, {
+                                        left: leftOff + layer.left,
+                                        top: topOff + layer.top,
+                                        opacity: layer.opacity != null ? layer.opacity : 1,
+                                        name: layer.name,
+                                        fontSize: fontSize,
+                                        fill: fill,
+                                        fontFamily: fontFamily
+                                        // width/height might be needed? Fabric calculates from text.
+                                    });
+                                }
+                                // Handle Image Layers
+                                else if (layer.canvas) {
+                                    fabricObj = new fabric.Image(layer.canvas, {
+                                        left: leftOff + layer.left,
+                                        top: topOff + layer.top,
+                                        opacity: layer.opacity != null ? layer.opacity : 1,
+                                        name: layer.name
+                                    });
+                                }
+
+                                if (fabricObj) {
+                                    canvas.add(fabricObj);
+                                }
                             }
                         });
                     };
@@ -1029,8 +1201,10 @@
                 fabric.Image.fromURL(e.target.result, function (img) {
                     // Set canvas size to first image size if empty
                     if (canvas.getObjects().length === 0) {
-                        canvas.setWidth(img.width);
-                        canvas.setHeight(img.height);
+                        baseWidth = img.width;
+                        baseHeight = img.height;
+                        canvas.setWidth(baseWidth);
+                        canvas.setHeight(baseHeight);
                     }
                     img.set({ name: file.name });
                     canvas.add(img);
@@ -1227,6 +1401,9 @@
         /* -------------------------------------------------------------
            UI & HELPERS
         ------------------------------------------------------------- */
+        /* -------------------------------------------------------------
+           UI & HELPERS
+        ------------------------------------------------------------- */
         function handleSelection(e) {
             const obj = e.selected ? e.selected[0] : canvas.getActiveObject();
             if (!obj) return;
@@ -1236,6 +1413,31 @@
             document.getElementById('prop-opacity').innerText = Math.round(obj.opacity * 100) + '%';
             document.getElementById('opacitySlider').value = obj.opacity * 100;
 
+            // Switch Sidebar Views
+            document.getElementById('view-default').style.display = 'none';
+            document.getElementById('view-image').style.display = 'none';
+            document.getElementById('view-text').style.display = 'none';
+
+            if (obj.type === 'image') {
+                document.getElementById('view-image').style.display = 'block';
+                // Keep current tab or default to filters?
+                // switchTab('filters'); 
+            } else if (obj.type === 'i-text' || obj.type === 'text') {
+                document.getElementById('view-text').style.display = 'block';
+
+                // Populate Text Controls
+                document.getElementById('textInput').value = obj.text;
+                document.getElementById('fontSizeSlider').value = obj.fontSize;
+                document.getElementById('fontSizeVal').innerText = obj.fontSize;
+                document.getElementById('textColorPicker').value = obj.fill;
+                document.getElementById('fontFamilySelect').value = obj.fontFamily;
+                document.getElementById('strokeWidthSlider').value = obj.strokeWidth || 0;
+                document.getElementById('strokeWidthVal').innerText = obj.strokeWidth || 0;
+                document.getElementById('strokeColorPicker').value = obj.stroke || '#000000';
+            } else {
+                document.getElementById('view-default').style.display = 'block';
+            }
+
             highlightLayer(obj);
         }
 
@@ -1243,6 +1445,10 @@
             activeObject = null;
             document.getElementById('prop-type').innerText = '-';
             document.getElementById('prop-opacity').innerText = '-';
+
+            document.getElementById('view-default').style.display = 'block';
+            document.getElementById('view-image').style.display = 'none';
+            document.getElementById('view-text').style.display = 'none';
         }
 
         function updateOpacity(val) {
@@ -1254,20 +1460,200 @@
             }
         }
 
+        // ... Text Functions ...
+        function updateText(val) {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('text', val);
+                canvas.renderAll();
+                updateLayerList();
+            }
+        }
+
+        function updateFontSize(val) {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('fontSize', parseInt(val));
+                document.getElementById('fontSizeVal').innerText = val;
+                canvas.renderAll();
+            }
+        }
+
+        function updateFontFamily(val) {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('fontFamily', val);
+                canvas.renderAll();
+            }
+        }
+
+        function toggleBold() {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold');
+                canvas.renderAll();
+            }
+        }
+
+        function toggleItalic() {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic');
+                canvas.renderAll();
+            }
+        }
+
+        function toggleUnderline() {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('underline', !obj.underline);
+                canvas.renderAll();
+            }
+        }
+
+        function toggleLinethrough() {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('linethrough', !obj.linethrough);
+                canvas.renderAll();
+            }
+        }
+
+        function updateTextColor(val) {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('fill', val);
+                canvas.renderAll();
+            }
+        }
+
+        function updateStrokeWidth(val) {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('strokeWidth', parseFloat(val));
+                document.getElementById('strokeWidthVal').innerText = val;
+                canvas.renderAll();
+            }
+        }
+
+        function updateStrokeColor(val) {
+            const obj = canvas.getActiveObject();
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                obj.set('stroke', val);
+                canvas.renderAll();
+            }
+        }
+
+        // ... Image Actions ...
+        function replaceImage(event) {
+            const file = event.target.files[0];
+            const obj = canvas.getActiveObject();
+            if (file && obj && obj.type === 'image') {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const imgObj = new Image();
+                    imgObj.src = e.target.result;
+                    imgObj.onload = function () {
+                        obj.setElement(imgObj);
+                        canvas.renderAll();
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        } // End replaceImage
+
+        /* -------------------------------------------------------------
+           Undo / Redo History
+        ------------------------------------------------------------- */
+        let stateHistory = [];
+        let historyMods = 0;
+        let historyProcessing = false;
+
+        function saveHistory() {
+            if (historyProcessing) return;
+            if (historyMods > 0) {
+                stateHistory = stateHistory.slice(0, stateHistory.length - historyMods);
+                historyMods = 0;
+            }
+            // Limit history
+            if (stateHistory.length > 10) stateHistory.shift();
+            stateHistory.push(JSON.stringify(canvas));
+        }
+
+        function undo() {
+            if (historyMods < stateHistory.length - 1) {
+                historyProcessing = true;
+                canvas.clear().renderAll();
+                historyMods++;
+                const idx = stateHistory.length - 1 - historyMods;
+                const state = stateHistory[idx];
+                canvas.loadFromJSON(state, function () {
+                    canvas.renderAll();
+                    historyProcessing = false;
+                    updateLayerList();
+                });
+            }
+        }
+
+        function redo() {
+            if (historyMods > 0) {
+                historyProcessing = true;
+                canvas.clear().renderAll();
+                historyMods--;
+                const idx = stateHistory.length - 1 - historyMods;
+                const state = stateHistory[idx];
+                canvas.loadFromJSON(state, function () {
+                    canvas.renderAll();
+                    historyProcessing = false;
+                    updateLayerList();
+                });
+            }
+        }
+
+        // Hook into modifications
+        function initHistory() {
+            // Save initial state
+            saveHistory();
+
+            canvas.on('object:modified', saveHistory);
+            canvas.on('object:added', () => { if (!historyProcessing) saveHistory(); });
+            // Object removed is already covered by 'object:removed' in main init, 
+            // but let's ensure we hook it for history too.
+            // (We'll add a specific hook in main init or here)
+            canvas.on('object:removed', () => { if (!historyProcessing) saveHistory(); });
+        }
+
+
         function centerCanvas() {
-            // Simple zoom to fit logic
-            // In a real app we'd calculate container size vs canvas size
-            canvas.setZoom(1);
-            const containerInfo = document.querySelector('.canvas-content').getBoundingClientRect();
-            // ... implementation skipped for brevity, just reset zoom
-            setZoom(1);
+            const wrapper = document.getElementById('canvasWrapper');
+            const container = document.getElementById('mainCanvasContainer');
+
+            if (!wrapper || !baseWidth || !baseHeight) return;
+
+            // Get container dimensions (subtracting padding)
+            const containerWidth = container.clientWidth - 40;
+            const containerHeight = container.clientHeight - 40;
+
+            const scaleX = containerWidth / baseWidth;
+            const scaleY = containerHeight / baseHeight;
+
+            // Fit to whichever is smaller to ensure full visibility
+            let zoom = Math.min(scaleX, scaleY);
+
+            // Cap at 1 if image is small? User asked for "proper show", usually means fit.
+            if (zoom > 1) zoom = 1;
+
+            setZoom(zoom);
         }
 
         function setZoom(scale) {
-            if (scale === 1) canvas.setZoom(1);
-            else canvas.setZoom(canvas.getZoom() * scale);
+            canvas.setZoom(scale);
 
-            document.getElementById('zoomLevel').innerText = Math.round(canvas.getZoom() * 100) + '%';
+            // Update canvas DOM size to match visual scale so it fits in UI
+            canvas.setWidth(baseWidth * scale);
+            canvas.setHeight(baseHeight * scale);
+
+            document.getElementById('zoomLevel').innerText = Math.round(scale * 100) + '%';
         }
 
         function updateLayerList() {
@@ -1291,9 +1677,18 @@
 
                 if (canvas.getActiveObject() === obj) el.classList.add('active-layer');
 
+                // Generate preview
+                const dataURL = obj.toDataURL({
+                    format: 'png',
+                    multiplier: 0.5
+                });
+
                 el.innerHTML = `
-                    <span class="layer-name">${obj.name || 'Layer ' + canvasIndex}</span>
-                    <span class="layer-type">${obj.type}</span>
+                    <img src="${dataURL}" class="layer-thumb" alt="Layer Preview">
+                    <div class="layer-info">
+                        <span class="layer-name">${obj.name || 'Layer ' + canvasIndex}</span>
+                        <span class="layer-type">${obj.type}</span>
+                    </div>
                 `;
                 el.onclick = () => {
                     canvas.setActiveObject(obj);
@@ -1365,8 +1760,11 @@
 
             document.getElementById('filtersTab').style.display = 'none';
             document.getElementById('adjustTab').style.display = 'none';
+            document.getElementById('img-actionsTab').style.display = 'none';
 
-            document.getElementById(tab + 'Tab').style.display = 'block';
+            if (document.getElementById(tab + 'Tab')) {
+                document.getElementById(tab + 'Tab').style.display = 'block';
+            }
         }
 
         function togglePanels() {
