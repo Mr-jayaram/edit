@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -1120,7 +1121,7 @@
                         // Reverse because PSD bottom layer is first in array usually, but Fabric renders bottom-up? 
                         // Actually ag-psd returns children: [top, ..., bottom], need to insert backwards or reverse.
                         // We'll iterate reverse to add to canvas so bottom is added first.
-                        [...children].reverse().forEach(layer => {
+                        [...children].forEach(layer => {
                             if (layer.children) {
                                 addLayers(layer.children, leftOff + (layer.left || 0), topOff + (layer.top || 0));
                             } else {
@@ -1662,7 +1663,7 @@
 
             // Fabric objects are drawn bottom to top (0 is bottom).
             // We want list to show Top first.
-            const objects = canvas.getObjects().slice().reverse();
+            const objects = canvas.getObjects().slice();
 
             if (objects.length === 0) {
                 list.innerHTML = '<div class="history-item">No Layers</div>';
