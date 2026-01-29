@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -746,7 +745,9 @@
         </div>
         <div class="header-actions">
             <button class="btn btn-secondary" onclick="exportImage('png')">Download PNG</button>
-            <button class="btn btn-primary" onclick="exportImage('jpg')">Save JPG</button>
+            <button class="btn btn-secondary" onclick="exportImage('jpg')">Save JPG</button>
+            <button class="btn btn-primary" onclick="updatePSD()" id="updatePSDBtn" style="display: none;">💾 Update
+                PSD</button>
         </div>
     </header>
 
@@ -1083,7 +1084,11 @@
             if (file) processFile(file);
         }
 
+        let currentFile = null; // Store the current file
+        let isPSDFile = false; // Track if current file is PSD
+
         function processFile(file) {
+            currentFile = file; // Store the file reference
             const fileName = file.name;
             document.getElementById('fileNameDisplay').innerText = fileName;
 
@@ -1092,8 +1097,12 @@
             document.getElementById('canvasWrapper').style.display = 'block';
 
             if (fileName.toLowerCase().endsWith('.psd')) {
+                isPSDFile = true;
+                document.getElementById('updatePSDBtn').style.display = 'inline-block';
                 loadPsd(file);
             } else {
+                isPSDFile = false;
+                document.getElementById('updatePSDBtn').style.display = 'none';
                 loadImage(file);
             }
         }
@@ -1753,6 +1762,187 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        /* -------------------------------------------------------------
+           UPDATE PSD - Export modified canvas as PSD
+        ------------------------------------------------------------- */
+        async function updatePSD() {
+            if (canvas.getObjects().length === 0) {
+                alert('No content to save!');
+                return;
+            }
+
+            try {
+                // Show loading indicator
+                const btn = document.getElementById('updatePSDBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '⏳ Saving...';
+                btn.disabled = true;
+
+                // Create PSD structure
+                const psd = {
+                    width: baseWidth,
+                    height: baseHeight,
+                    children: []
+                };
+
+                // Convert each Fabric.js object to PSD layer
+                const objects = canvas.getObjects();
+
+                for (let i = 0; i < objects.length; i++) {
+                    const obj = objects[i];
+                    const layer = await fabricObjectToPSDLayer(obj);
+                    if (layer) {
+                        psd.children.push(layer);
+                    }
+                }
+
+                // Write PSD file
+                const buffer = agPsd.writePsd(psd, { generateThumbnail: true });
+
+                // Create download link
+                const blob = new Blob([buffer], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+
+                const fileName = document.getElementById('fileNameDisplay').innerText;
+                const baseName = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+                link.download = `${baseName}_updated.psd`;
+                link.href = url;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                // Reset button
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+
+                alert('PSD file updated and downloaded successfully!');
+            } catch (error) {
+                console.error('Error updating PSD:', error);
+                alert('Error saving PSD: ' + error.message);
+
+                // Reset button on error
+                const btn = document.getElementById('updatePSDBtn');
+                btn.innerHTML = '💾 Update PSD';
+                btn.disabled = false;
+            }
+        }
+
+        /* -------------------------------------------------------------
+           Convert Fabric.js object to PSD layer
+        ------------------------------------------------------------- */
+        async function fabricObjectToPSDLayer(obj) {
+            const layer = {
+                name: obj.name || `Layer ${canvas.getObjects().indexOf(obj)}`,
+                opacity: obj.opacity != null ? obj.opacity : 1,
+                left: Math.round(obj.left || 0),
+                top: Math.round(obj.top || 0)
+            };
+
+            // Handle Text Layers
+            if (obj.type === 'i-text' || obj.type === 'text') {
+                // Convert RGB/Hex color to ag-psd color format
+                const fillColor = hexToRgb(obj.fill || '#000000');
+
+                layer.text = {
+                    text: obj.text || '',
+                    style: {
+                        fontSize: obj.fontSize || 20,
+                        fillColor: fillColor,
+                        font: {
+                            name: obj.fontFamily || 'Arial'
+                        }
+                    },
+                    transform: {
+                        xx: 1, xy: 0, yx: 0, yy: 1, tx: 0, ty: 0
+                    }
+                };
+            }
+            // Handle Image Layers
+            else if (obj.type === 'image') {
+                // Create a temporary canvas to render the object
+                const tempCanvas = document.createElement('canvas');
+                const scaleX = obj.scaleX || 1;
+                const scaleY = obj.scaleY || 1;
+
+                tempCanvas.width = Math.round((obj.width || obj.getScaledWidth()) * scaleX);
+                tempCanvas.height = Math.round((obj.height || obj.getScaledHeight()) * scaleY);
+
+                const ctx = tempCanvas.getContext('2d');
+
+                // Apply filters if any
+                if (obj.filters && obj.filters.length > 0) {
+                    obj.applyFilters();
+                }
+
+                // Draw the image
+                const element = obj.getElement();
+                if (element) {
+                    ctx.drawImage(element, 0, 0, tempCanvas.width, tempCanvas.height);
+                }
+
+                layer.canvas = tempCanvas;
+            }
+            // Handle other drawable objects (shapes, paths, etc.)
+            else {
+                // Render object to a temporary canvas
+                const tempCanvas = document.createElement('canvas');
+                const bounds = obj.getBoundingRect();
+
+                tempCanvas.width = Math.max(1, Math.round(bounds.width));
+                tempCanvas.height = Math.max(1, Math.round(bounds.height));
+
+                const ctx = tempCanvas.getContext('2d');
+
+                // Create temporary fabric canvas to render single object
+                const tempFabricCanvas = new fabric.StaticCanvas(tempCanvas);
+
+                // Clone object and center it in temp canvas
+                obj.clone(function (cloned) {
+                    cloned.set({
+                        left: tempCanvas.width / 2,
+                        top: tempCanvas.height / 2,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                    tempFabricCanvas.add(cloned);
+                    tempFabricCanvas.renderAll();
+                });
+
+                layer.canvas = tempCanvas;
+                layer.left = Math.round(bounds.left);
+                layer.top = Math.round(bounds.top);
+            }
+
+            return layer;
+        }
+
+        /* -------------------------------------------------------------
+           Helper: Convert hex color to RGB object for ag-psd
+        ------------------------------------------------------------- */
+        function hexToRgb(hex) {
+            // Handle rgb() format
+            if (hex.startsWith('rgb')) {
+                const match = hex.match(/\d+/g);
+                if (match && match.length >= 3) {
+                    return {
+                        r: parseInt(match[0]),
+                        g: parseInt(match[1]),
+                        b: parseInt(match[2])
+                    };
+                }
+            }
+
+            // Handle hex format
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
         }
 
         function switchTab(tab) {
